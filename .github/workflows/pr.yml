@@ -1,0 +1,52 @@
+name: pr validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'modules/azure/**'
+      - 'test/azure/**'
+
+jobs:
+  lint:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: github/super-linter@v3
+        name: lint files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  test-for-azure:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/login@v1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: run go tests for azure
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          az account show
+          cd test
+          TEST_VERSION=`date +"%Y%m%d%H%M"`
+          export ARM_SUBSCRIPTION_ID=`az account show --query "id" --output tsv`
+
+          APP_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".appId"`
+
+          APP_PASSWORD=`echo $AZURE_CREDENTIALS | jq -r -c ".password"`
+
+          TENANT_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".tenantId"`
+
+          export ARM_CLIENT_ID="$APP_ID"
+          export ARM_CLIENT_SECRET="$APP_PASSWORD"
+          export ARM_SUBSCRIPTION_ID="$ARM_SUBSCRIPTION_ID"
+          export ARM_TENANT_ID="$TENANT_ID"
+
+          rm -rf ssh_key*
+          ssh-keygen -m PEM -t rsa -b 4096 -f ./ssh_key -q -N ""
+          export TF_VAR_ssh_public_key="$PWD/ssh_key.pub"
+          export TF_VAR_client_id="$APP_ID"
+          export TF_VAR_client_secret="$APP_PASSWORD"
+
+          go test ./azure/* -timeout 30m
