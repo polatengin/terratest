@@ -6,7 +6,6 @@
 package test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/azure"
@@ -33,27 +32,43 @@ func TestTerraformAzureStorageExample(t *testing.T) {
 	// storage::tag::3:: Run `terraform output` to get the values of output variables
 	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
 	storageAccountName := terraform.Output(t, terraformOptions, "storage_account_name")
-	skuTier := "Standard"
-	kind := "StorageV2"
-	accessLevel := "None"
+
+	// storage::tag::5 Set expected variables for test
+	expectedSkuTier := "Standard"
+	expectedKind := "StorageV2"
 	containerName := "container1"
 
-	// storage::tag::4:: Look up the size of the given Virtual Machine and ensure it matches the output.
+	// happy path tests
 
-	storageAccount, err := azure.GetStorageAccountPropertyE(storageAccountName, resourceGroupName, "")
+	//storage account exists
+	exists, err := azure.StorageAccountExistsE(storageAccountName, resourceGroupName, "")
 	require.NoError(t, err)
+	assert.True(t, exists)
 
-	storageSuffix, _ := azure.GetStorageUriSuffix()
-	expectedDns := fmt.Sprintf("https://%s.blob.%s/", storageAccountName, *storageSuffix)
-	assert.Equal(t, expectedDns, string(*storageAccount.AccountProperties.PrimaryEndpoints.Blob))
-
-	assert.Equal(t, storageAccountName, *storageAccount.Name, "Storage account name not found.")
-	assert.Equal(t, skuTier, string(storageAccount.Sku.Tier), "Storage account SKU tier mismatch.")
-	assert.Equal(t, kind, string(storageAccount.Kind), "Storage account kind mismatch.")
-
-	container, err := azure.GetBlobContainerE(storageAccountName, containerName, resourceGroupName, "")
+	//blob endpoint matches
+	blobEndpoint, err := azure.GetStorageAccountPrimaryBlobEndpointE(storageAccountName, resourceGroupName, "")
 	require.NoError(t, err)
+	builtEndpointString, err := azure.BuildStorageDNSStringE(storageAccountName, resourceGroupName, "")
+	require.NoError(t, err)
+	assert.Equal(t, builtEndpointString, blobEndpoint, "Blob endpoint URI mismatch.")
 
-	assert.Equal(t, containerName, *container.Name, "Storage container name mismatch.")
-	assert.Equal(t, accessLevel, string(container.PublicAccess), "Storage container access level not private.")
+	//sku tier
+	storageSkuTier, err := azure.GetStorageAccountSkuTierE(storageAccountName, resourceGroupName, "")
+	require.NoError(t, err)
+	assert.Equal(t, expectedSkuTier, storageSkuTier, "Storage SKU Tier mismatch.")
+
+	//kind
+	kind, err := azure.GetStorageAccountKindE(storageAccountName, resourceGroupName, "")
+	require.NoError(t, err)
+	assert.Equal(t, expectedKind, kind, "Storage kind mismatch.")
+
+	//container exists
+	containerExists, err := azure.BlobContainerExistsE(containerName, storageAccountName, resourceGroupName, "")
+	require.NoError(t, err)
+	assert.True(t, containerExists, "Blob storage container does not exist.")
+
+	//container public access denied
+	publicAccess, err := azure.StorageContainerHasPublicAccessE(containerName, storageAccountName, resourceGroupName, "")
+	require.NoError(t, err)
+	assert.False(t, publicAccess, "Blob container has public access.")
 }

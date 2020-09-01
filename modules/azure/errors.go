@@ -15,3 +15,9 @@ type ResourceGroupNameNotFound struct{}
 func (err ResourceGroupNameNotFound) Error() string {
 	return fmt.Sprintf("Could not find an Azure Resource Group name in expected environment variable %s and one was not provided for this test.", AzureResGroupName)
 }
+
+type StorageAccountNameNotFound struct{}
+
+func (err StorageAccountNameNotFound) Error() string {
+	return fmt.Sprintf("Azure storage account name not found.")
+}
