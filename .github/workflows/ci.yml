@@ -38,6 +38,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: run go tests for azure
+        id: tests
         env:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
@@ -67,6 +68,8 @@ jobs:
       - name: report back the result
         env:
           RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TESTS_RESULT: ${{ steps.tests.outcome }}
         run: |
-          BODY_PAYLOAD="TL;DR;\n\nYou can check the status of the CI Pipeline logs here ; https://github.com/polatengin/terratest/actions/runs/$RUN_ID"
-          curl --request POST --header "Accept: application/vnd.github.v3+json" https://api.github.com/repos/polatengin/terratest/issues/14/comments --data "{\"body\":\"${BODY_PAYLOAD}\"}"
+          BODY_PAYLOAD="TL;DR; $TESTS_RESULT\n\nYou can check the status of the CI Pipeline logs here ; https://github.com/polatengin/terratest/actions/runs/$RUN_ID"
+          curl --request POST --header "Authorization: token $GITHUB_TOKEN" --header "Accept: application/vnd.github.v3+json" https://api.github.com/repos/polatengin/terratest/issues/14/comments --data "{\"body\":\"${BODY_PAYLOAD}\"}"
