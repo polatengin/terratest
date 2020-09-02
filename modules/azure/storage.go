@@ -52,8 +52,8 @@ func StorageAccountExistsE(storageAccountName, resourceGroupName, subscriptionID
 	if err3 != nil {
 		return false, err3
 	}
-	storageAccount, err := GetStorageAccountPropertyE(storageAccountName, resourceGroupName, subscriptionID)
-	if err != nil {
+	storageAccount, err4 := GetStorageAccountPropertyE(storageAccountName, resourceGroupName, subscriptionID)
+	if err4 != nil {
 		return false, nil
 	}
 	return *storageAccount.Name == storageAccountName, nil
@@ -201,6 +201,9 @@ func GetBlobContainersClientE(subscriptionID string) (*storage.BlobContainersCli
 // GetEnvironmentBaseUri returns the ARM management URI for the configured Azure environment.
 func GetEnvironmentBaseUri() (*string, error) {
 	envName := os.Getenv(AzureEnvironmentEnvName)
+	if envName == "" {
+		envName = "AzurePublicCloud"
+	}
 	env, err := azure.EnvironmentFromName(envName)
 	if err != nil {
 		return nil, err
@@ -211,6 +214,9 @@ func GetEnvironmentBaseUri() (*string, error) {
 // GetStorageUriSuffix returns the proper storage URI suffix for the configured Azure environment
 func GetStorageUriSuffix() (*string, error) {
 	envName := os.Getenv(AzureEnvironmentEnvName)
+	if envName == "" {
+		envName = "AzurePublicCloud"
+	}
 	env, err := azure.EnvironmentFromName(envName)
 	if err != nil {
 		return nil, err
