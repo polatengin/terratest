@@ -1,0 +1,72 @@
+name: ci-workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'Repository info'
+        required: true
+      branch:
+        description: 'Name of the branch'
+        required: true
+
+jobs:
+  ci-job:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ github.event.inputs.repo }}
+          ref: ${{ github.event.inputs.branch }}
+      - name: list files to lint
+        run: |
+          ls -li modules/azure
+      - uses: golangci/golangci-lint-action@v2.2.0
+        name: lint modules/azure folder
+        with:
+          version: v1.30
+          working-directory: modules/azure
+      - name: list files to lint
+        run: |
+          ls -li test/azure
+      - uses: golangci/golangci-lint-action@v2.2.0
+        name: lint test/azure folder
+        with:
+          version: v1.30
+          working-directory: test/azure
+      - uses: azure/login@v1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: run go tests for azure
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          az account show
+          cd test
+          TEST_VERSION=`date +"%Y%m%d%H%M"`
+          export ARM_SUBSCRIPTION_ID=`az account show --query "id" --output tsv`
+
+          APP_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".clientId"`
+
+          APP_PASSWORD=`echo $AZURE_CREDENTIALS | jq -r -c ".clientSecret"`
+
+          TENANT_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".tenantId"`
+
+          export ARM_CLIENT_ID="$APP_ID"
+          export ARM_CLIENT_SECRET="$APP_PASSWORD"
+          export ARM_SUBSCRIPTION_ID="$ARM_SUBSCRIPTION_ID"
+          export ARM_TENANT_ID="$TENANT_ID"
+
+          rm -rf ssh_key*
+          ssh-keygen -m PEM -t rsa -b 4096 -f ./ssh_key -q -N ""
+          export TF_VAR_ssh_public_key="$PWD/ssh_key.pub"
+          export TF_VAR_client_id="$APP_ID"
+          export TF_VAR_client_secret="$APP_PASSWORD"
+
+          # go test ./azure/* -timeout 30m
+      - name: report back the result
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          BODY_PAYLOAD="TL;DR;\n\nYou can check the status of the CI Pipeline logs here ; https://github.com/polatengin/terratest/actions/runs/$RUN_ID"
+          curl --request POST --header "Accept: application/vnd.github.v3+json" https://api.github.com/repos/polatengin/terratest/issues/14/comments --data "{\"body\":\"${BODY_PAYLOAD}\"}"
