@@ -29,3 +29,9 @@ variable "location" {
   type        = string
   default     = "East US"
 }
+
+variable "resourceGroupName" {
+  description = "The name of the resource group."
+  type        = string
+  default     = "testresourcegroup"
+}
