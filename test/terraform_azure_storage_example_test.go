@@ -11,7 +11,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/azure"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTerraformAzureStorageExample(t *testing.T) {
@@ -42,33 +41,33 @@ func TestTerraformAzureStorageExample(t *testing.T) {
 
 	//storage account exists
 	exists, err := azure.StorageAccountExistsE(storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Storage account error.")
 	assert.True(t, exists)
 
 	//blob endpoint matches
 	blobEndpoint, err := azure.GetStorageAccountPrimaryBlobEndpointE(storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	builtEndpointString, err := azure.BuildStorageDNSStringE(storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Blob endpoint error.")
 	assert.Equal(t, builtEndpointString, blobEndpoint, "Blob endpoint URI mismatch.")
 
 	//sku tier
 	storageSkuTier, err := azure.GetStorageAccountSkuTierE(storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Storage sku tier error.")
 	assert.Equal(t, expectedSkuTier, storageSkuTier, "Storage SKU Tier mismatch.")
 
 	//kind
 	kind, err := azure.GetStorageAccountKindE(storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Storage kind error.")
 	assert.Equal(t, expectedKind, kind, "Storage kind mismatch.")
 
 	//container exists
 	containerExists, err := azure.BlobContainerExistsE(containerName, storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Storage container error.")
 	assert.True(t, containerExists, "Blob storage container does not exist.")
 
 	//container public access denied
 	publicAccess, err := azure.StorageContainerHasPublicAccessE(containerName, storageAccountName, resourceGroupName, "")
-	require.NoError(t, err)
+	assert.NoError(t, err, "Storage container public access error.")
 	assert.False(t, publicAccess, "Blob container has public access.")
 }
