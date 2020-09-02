@@ -64,7 +64,7 @@ jobs:
           export TF_VAR_client_id="$APP_ID"
           export TF_VAR_client_secret="$APP_PASSWORD"
 
-          # go test ./azure/* -timeout 30m
+          go test ./azure/* -timeout 30m
       - name: report back the result
         env:
           RUN_ID: ${{ github.run_id }}
