@@ -30,15 +30,21 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 
 	// loadbalancer::tag::3:: Run `terraform output` to get the values of output variables
 	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
-	loadBalancerName := terraform.Output(t, terraformOptions, "loadbalancer_name")
+	loadBalancer01Name := terraform.Output(t, terraformOptions, "loadbalancer01_name")
+	loadBalancer02Name := terraform.Output(t, terraformOptions, "loadbalancer02_name")
 
 	// loadbalancer::tag::5 Set expected variables for test
 
 	// happy path tests
 
-	// load balancer exists
-	exists, err := azure.GetLoadBalancerE(loadBalancerName, resourceGroupName, "")
-	assert.NoError(t, err, "Load Balancer error.")
-	assert.True(t, exists)
+	// load balancer 01 (with Public IP) exists
+	lb01Exists, err1 := azure.GetLoadBalancerE(loadBalancer01Name, resourceGroupName, "")
+	assert.NoError(t, err1, "Load Balancer error.")
+	assert.True(t, lb01Exists)
+
+	// load balancer 02 (with Private IP on vnet/subnet) exists
+	lb02Exists, err2 := azure.GetLoadBalancerE(loadBalancer02Name, resourceGroupName, "")
+	assert.NoError(t, err2, "Load Balancer error.")
+	assert.True(t, lb02Exists)
 
 }
