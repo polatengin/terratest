@@ -27,9 +27,6 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 	}
 
 	// config
-	uniquePrefix := "terratest-example" //terraformOptions.Vars["prefix"].(string)
-	FrontendIPConfig := fmt.Sprintf("%s-frontendip01", uniquePrefix)
-	PublicIPAddressResource := fmt.Sprintf("%s-pip", uniquePrefix)
 	FrontendIPAllocationMethod := "Dynamic"
 
 	// loadbalancer::tag::4:: At the end of the test, run `terraform destroy` to clean up any resources that were created
@@ -43,6 +40,13 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 	loadBalancer01Name := terraform.Output(t, terraformOptions, "loadbalancer01_name")
 	loadBalancer02Name := terraform.Output(t, terraformOptions, "loadbalancer02_name")
 
+	frontendIPConfigForLB01 := terraform.Output(t, terraformOptions, "lb01_feconfig")
+	publicIPAddressForLB01 := terraform.Output(t, terraformOptions, "pip_forlb01")
+
+	frontendIPConfigForLB02 := terraform.Output(t, terraformOptions, "feIPConfig_forlb02")
+	frontendIPAllocForLB02 := "Static"
+	frontendSubnetID := terraform.Output(t, terraformOptions, "feSubnet_forlb02")
+
 	// loadbalancer::tag::5 Set expected variables for test
 
 	// happy path tests
@@ -50,8 +54,8 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 		t.Parallel()
 
 		// load balancer 01 (with Public IP) exists
-		lb01Exists, err1 := azure.LoadBalancerExistsE(loadBalancer01Name, resourceGroupName, "")
-		assert.NoError(t, err1, "Load Balancer error.")
+		lb01Exists, err := azure.LoadBalancerExistsE(loadBalancer01Name, resourceGroupName, "")
+		assert.NoError(t, err, "Load Balancer error.")
 		assert.True(t, lb01Exists)
 
 	})
@@ -67,7 +71,7 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 		t.Parallel()
 
 		// Verify settings
-		assert.Equal(t, FrontendIPConfig, *fe01Config.Name, "LB01 Frontend IP config name")
+		assert.Equal(t, frontendIPConfigForLB01, *fe01Config.Name, "LB01 Frontend IP config name")
 	})
 
 	t.Run("IP Checks for LB01", func(t *testing.T) {
@@ -77,26 +81,44 @@ func TestTerraformAzureLoadBalancerExample(t *testing.T) {
 		assert.Nil(t, fe01Props.PrivateIPAddress, "LB01 shouldn't have PrivateIPAddress")
 
 		// Ensure PublicIPAddress Resource exists, no need to check PublicIPAddress value
-		publicIPAddressResource, err := azure.GetPublicIPAddressE(resourceGroupName, PublicIPAddressResource, "")
+		publicIPAddressResource, err := azure.GetPublicIPAddressE(resourceGroupName, publicIPAddressForLB01, "")
 		require.NoError(t, err)
-		assert.NotNil(t, publicIPAddressResource, fmt.Sprintf("Public IP Resource for LB01 Frontend: %s", PublicIPAddressResource))
+		assert.NotNil(t, publicIPAddressResource, fmt.Sprintf("Public IP Resource for LB01 Frontend: %s", publicIPAddressForLB01))
 
 		// Verify that expected PublicIPAddressResource is assigned to Load Balancer
 		pipResourceName, err := GetSliceLastValueLocal(*fe01Props.PublicIPAddress.ID, "/")
 		require.NoError(t, err)
-		assert.Equal(t, PublicIPAddressResource, pipResourceName, "LB01 Public IP Address Resource Name")
+		assert.Equal(t, publicIPAddressForLB01, pipResourceName, "LB01 Public IP Address Resource Name")
 
-		assert.Equal(t, FrontendIPAllocationMethod, string(fe01Props.PrivateIPAllocationMethod), "VDSS01 LB Frontend IP allocation method")
+		assert.Equal(t, FrontendIPAllocationMethod, string(fe01Props.PrivateIPAllocationMethod), "LB01 Frontend IP allocation method")
 		assert.Nil(t, fe01Props.Subnet, "LB01 shouldn't have Subnet")
 	})
+
+	// Read LB02 information
+	lb02, err := azure.GetLoadBalancerE(loadBalancer02Name, resourceGroupName, "")
+	require.NoError(t, err)
+	lb02Props := lb02.LoadBalancerPropertiesFormat
+	fe02Config := (*lb02Props.FrontendIPConfigurations)[0]
+	fe02Props := *fe02Config.FrontendIPConfigurationPropertiesFormat
 
 	t.Run("Load Balancer 02", func(t *testing.T) {
 		t.Parallel()
 
 		// load balancer 02 (with Private IP on vnet/subnet) exists
-		lb02Exists, err2 := azure.LoadBalancerExistsE(loadBalancer02Name, resourceGroupName, "")
-		assert.NoError(t, err2, "Load Balancer error.")
+		lb02Exists, err := azure.LoadBalancerExistsE(loadBalancer02Name, resourceGroupName, "")
+		assert.NoError(t, err, "Load Balancer error.")
 		assert.True(t, lb02Exists)
+	})
+
+	t.Run("IP Check for Load Balancer 02", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, frontendIPConfigForLB02, *fe02Props.PrivateIPAddress, "LB02 Frontend IP address")
+		assert.Equal(t, frontendIPAllocForLB02, string(fe02Props.PrivateIPAllocationMethod), "LB02 Frontend IP allocation method")
+		subnetID, err := GetSliceLastValueLocal(*fe02Props.Subnet.ID, "/")
+		require.NoError(t, err, "LB02 Frontend subnet not found")
+		frontendSubnetID, err := GetSliceLastValueLocal(frontendSubnetID, "/")
+		assert.Equal(t, frontendSubnetID, subnetID, "LB02 Frontend subnet ID")
 	})
 
 }
