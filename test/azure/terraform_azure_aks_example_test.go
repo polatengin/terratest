@@ -31,7 +31,7 @@ func TestTerraformAzureAKSExample(t *testing.T) {
 	expectedAagentCount := 3
 
 	terraformOptions := &terraform.Options{
-		TerraformDir: "../examples/terraform-azure-aks-example",
+		TerraformDir: "../../examples/azure/terraform-azure-aks-example",
 		Vars: map[string]interface{}{
 			"cluster_name":        expectedClusterName,
 			"resource_group_name": expectedResourceGroupName,
@@ -53,7 +53,7 @@ func TestTerraformAzureAKSExample(t *testing.T) {
 	assert.Equal(t, int32(expectedAagentCount), actualCount)
 
 	// Path to the Kubernetes resource config we will test
-	kubeResourcePath, err := filepath.Abs("../examples/terraform-azure-aks-example/nginx-deployment.yml")
+	kubeResourcePath, err := filepath.Abs("../../examples/azure/terraform-azure-aks-example/nginx-deployment.yml")
 	require.NoError(t, err)
 
 	// To ensure we can reuse the resource config on the same cluster to test different scenarios, we setup a unique
@@ -64,7 +64,7 @@ func TestTerraformAzureAKSExample(t *testing.T) {
 	// Setup the kubectl config and context. Here we choose to use the defaults, which is:
 	// - HOME/.kube/config for the kubectl config file
 	// - Current context of the kubectl config file
-	options := k8s.NewKubectlOptions("", "../examples/terraform-azure-aks-example/kubeconfig", namespaceName)
+	options := k8s.NewKubectlOptions("", "../../examples/azure/terraform-azure-aks-example/kubeconfig", namespaceName)
 
 	k8s.CreateNamespace(t, options, namespaceName)
 	// ... and make sure to delete the namespace at the end of the test
@@ -97,5 +97,4 @@ func TestTerraformAzureAKSExample(t *testing.T) {
 			return statusCode == 200
 		},
 	)
-
 }
