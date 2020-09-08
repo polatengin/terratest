@@ -1,0 +1,116 @@
+name: ci-workflow
+
+# actors
+  # source repo: official terratest repo (gruntwork-io/terratest)
+  # forked repo: (e.g., xyz/terratest, abc/terratest)
+  # pr: created from forked repo, against source repo (gruntwork-io/terratest/pull/{PR NUMBER})
+# flow
+  # developer fork the source repo
+  # developer creates a branch in the forked repo
+  # developer does the development 😎
+  # developer creates a pr
+  # webhook on source repo calls a webapp when the pr has been created
+  # this pipeline will be triggered automatically by the webapp, with the following input values
+    # repo: name of the forked repo (e.g. xyz/terratest)
+    # branch: branch name on the forked repo (e.g. feature/adding-some-important-module)
+    # target_repository: home of the target_pr, which is the source repo (gruntwork-io/terratest)
+    # target_pr: pr number on the source repo (e.g. 14, 25, etc.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'Repository info'
+        required: true
+      branch:
+        description: 'Name of the branch'
+        required: true
+      target_repository:
+        description: 'Name of the official terratest repo'
+        required: true
+        default: 'gruntwork-io/terratest'
+      target_pr:
+        description: 'PR number on the official terratest repo'
+        required: true
+
+jobs:
+  ci-job:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: checkout to repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ github.event.inputs.repo }}
+          ref: ${{ github.event.inputs.branch }}
+      - name: list module files to lint
+        run: |
+          [ -d "modules/azure" ] && ls -li "modules/azure"
+      - name: lint modules/azure folder
+        id: azure_module_lint
+        uses: golangci/golangci-lint-action@v2.2.0
+        with:
+          version: v1.30
+          working-directory: modules/azure
+      - name: list test files to lint
+        run: |
+          [ -d "test/azure" ] && ls -li "test/azure"
+      - name: lint test/azure folder
+        id: azure_test_lint
+        uses: golangci/golangci-lint-action@v2.2.0
+        with:
+          version: v1.30
+          working-directory: test/azure
+      - name: login to azure cli
+        uses: azure/login@v1.1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: run go test for azure
+        id: azure_test
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          cd test
+
+          APP_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".clientId"`
+          APP_PASSWORD=`echo $AZURE_CREDENTIALS | jq -r -c ".clientSecret"`
+          TENANT_ID=`echo $AZURE_CREDENTIALS | jq -r -c ".tenantId"`
+
+          # if clientId, subscriptionId, tenantId doesn't provide to the go tests
+          # by default, terratest reads them from below environment variables
+          export ARM_CLIENT_ID="$APP_ID"
+          export ARM_CLIENT_SECRET="$APP_PASSWORD"
+          export ARM_SUBSCRIPTION_ID=`az account show --query "id" --output tsv`
+          export ARM_TENANT_ID="$TENANT_ID"
+
+          # some resources may require ssh keys (e.g. Kubernetes, VMs, etc.)
+          # terraform will read below environment variables
+          # if those values didn't provide to the terraform explicitly
+          rm -rf ssh_key*
+          ssh-keygen -m PEM -t rsa -b 4096 -f ./ssh_key -q -N ""
+          export TF_VAR_ssh_public_key="$PWD/ssh_key.pub"
+          export TF_VAR_client_id="$APP_ID"
+          export TF_VAR_client_secret="$APP_PASSWORD"
+
+          # run the actual tests under the `azure` subfolder
+          go test ./azure/* -v -timeout 90m
+      - name: report back the result
+        if: always()
+        env:
+          CURRENT_REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_REPOSITORY: ${{ github.event.inputs.target_repository }}
+          TARGET_PR: ${{ github.event.inputs.target_pr }}
+          TEST_RESULT: ${{ steps.azure_test.conclusion }}
+          TEST_LINT_RESULT: ${{ steps.azure_test_lint.conclusion }}
+          MODULE_LINT_RESULT: ${{ steps.azure_module_lint.conclusion }}
+        run: |
+          # if all the previous steps finished successfully, create a comment on the PR with the "success" information
+          if [ "$TEST_RESULT" == "success" ] && [ "$TEST_LINT_RESULT" == "success" ] && [ "$MODULE_LINT_RESULT" == "success" ]; then
+            BODY_PAYLOAD="[Microsoft CI Bot] TL;DR; success :thumbsup:\n\nYou can check the status of the CI Pipeline logs here ; https://github.com/${CURRENT_REPOSITORY}/actions/runs/$RUN_ID"
+            curl --request POST --header "Authorization: token ${GITHUB_TOKEN}" --header "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${TARGET_REPOSITORY}/issues/${TARGET_PR}/comments --data "{\"body\":\"${BODY_PAYLOAD}\"}"
+          # if at least one of the previous steps failed, create a comment on the PR with the "failure" information
+          elif [ "$TEST_RESULT" == "failure" ] || [ "$TEST_LINT_RESULT" == "failure" ] || [ "$MODULE_LINT_RESULT" == "failure" ]; then
+            BODY_PAYLOAD="[Microsoft CI Bot] TL;DR; failure :facepalm:\n\nYou can check the status of the CI Pipeline logs here ; https://github.com/${CURRENT_REPOSITORY}/actions/runs/$RUN_ID"
+            curl --request POST --header "Authorization: token ${GITHUB_TOKEN}" --header "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${TARGET_REPOSITORY}/issues/${TARGET_PR}/comments --data "{\"body\":\"${BODY_PAYLOAD}\"}"
+          fi

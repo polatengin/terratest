@@ -13,8 +13,12 @@ const (
 	AzureResGroupName = "AZURE_RES_GROUP_NAME"
 )
 
-// getTargetAzureSubscription is a helper function to find the correct target Azure Subscription ID,
+// GetTargetAzureSubscription is a helper function to find the correct target Azure Subscription ID,
 // with provided arguments taking precedence over environment variables
+func GetTargetAzureSubscription(subscriptionID string) (string, error) {
+	return getTargetAzureSubscription(subscriptionID)
+}
+
 func getTargetAzureSubscription(subscriptionID string) (string, error) {
 	if subscriptionID == "" {
 		if id, exists := os.LookupEnv(AzureSubscriptionID); exists {
@@ -25,8 +29,12 @@ func getTargetAzureSubscription(subscriptionID string) (string, error) {
 	return subscriptionID, nil
 }
 
-// getTargetAzureResourceGroupName is a helper function to find the correct target Azure Resource Group name,
+// GetTargetAzureResourceGroupName is a helper function to find the correct target Azure Resource Group name,
 // with provided arguments taking precedence over environment variables
+func GetTargetAzureResourceGroupName(resourceGroupName string) (string, error) {
+	return getTargetAzureResourceGroupName(resourceGroupName)
+}
+
 func getTargetAzureResourceGroupName(resourceGroupName string) (string, error) {
 	if resourceGroupName == "" {
 		if name, exists := os.LookupEnv(AzureResGroupName); exists {
