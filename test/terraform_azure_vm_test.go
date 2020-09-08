@@ -107,7 +107,7 @@ func TestTerraformAzureVmExample(t *testing.T) {
 	resourceGroupName := expectedResourceGroup // terraform.Output(t, terraformOptions, "resource_group_name")
 	expectedVMSize := compute.VirtualMachineSizeTypes(expectedVmSize)
 
-	t.Run("VirtualMachineTestingStrategies", func(t *testing.T) {
+	t.Run("Strategies", func(t *testing.T) {
 		t.Parallel()
 
 		// Check the VM Size directly
@@ -140,7 +140,7 @@ func TestTerraformAzureVmExample(t *testing.T) {
 		assert.Equal(t, expectedVMSize, thisVm.HardwareProfile.VMSize)
 	})
 
-	t.Run("VirtualMachineInformation", func(t *testing.T) {
+	t.Run("Information", func(t *testing.T) {
 		t.Parallel()
 
 		// Check the Virtual Machine exists
@@ -171,7 +171,7 @@ func TestTerraformAzureVmExample(t *testing.T) {
 		assert.Contains(t, actualVMsInAvs, strings.ToUpper(vmName))
 	})
 
-	t.Run("Disks", func(t *testing.T) {
+	t.Run("Disk", func(t *testing.T) {
 		t.Parallel()
 
 		// Check the OS Disk name
@@ -192,7 +192,7 @@ func TestTerraformAzureVmExample(t *testing.T) {
 		assert.Contains(t, actualManagedDiskNames, expectedDisk01Name)
 	})
 
-	t.Run("NetworkInterfaces", func(t *testing.T) {
+	t.Run("NetworkInterface", func(t *testing.T) {
 		t.Parallel()
 
 		// Check the Network Interface count
@@ -212,7 +212,7 @@ func TestTerraformAzureVmExample(t *testing.T) {
 		assert.NotNil(t, actualPublicIP)
 	})
 
-	t.Run("VirtualNetwork_Subnet", func(t *testing.T) {
+	t.Run("Vnet&Subnet", func(t *testing.T) {
 		t.Parallel()
 
 		// Check the VM Subnet IP Range
