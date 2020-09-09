@@ -1,4 +1,4 @@
-# Terraform Azure Example
+# Terraform Azure Key Vault Example
 
 This folder contains a simple Terraform module that deploys resources in [Azure](https://azure.microsoft.com/) to demonstrate
 how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys a [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) and gives the Key Vault a `Name` tag with the value specified in the
