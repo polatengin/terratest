@@ -3,16 +3,17 @@
 This folder contains a simple Terraform module that deploys resources in [Azure](https://azure.microsoft.com/) to demonstrate
 how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys a [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) and gives the Key Vault a `Name` tag with the value specified in the`key_vault_name` variable.  Additionally, the module create the following resources with output variables names added to the Key Vault:
 
- Resource Type       Output Variable Name
- ________________________________________
-| Secret          |  secret_name         |
-| Key             |  key_name            |
-| Certificate     |  certificate_name    |
- ________________________________________
+
+| Resource Type            |  Output Variable Name      |
+|----------------------|--------------------------------|
+| Secret | secret_name          
+| Key | key_name          
+| Certificate | certificate_name          
 
 
+<br>
 Check out [test/terraform_azure_keyvault_example_test.go](/test/terraform_azure_example_test.go) to see how you can write
-automated tests for this module.
+automated tests for this module. <p>
 
 **WARNING**: This module and the automated tests for it deploy real resources into your Azure account which can cost you
 money. The resources are all part of the [Azure Free Account](https://azure.microsoft.com/en-us/free/), so if you haven't used that up,
