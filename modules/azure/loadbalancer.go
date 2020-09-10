@@ -34,7 +34,7 @@ func GetLoadBalancerE(loadBalancerName string, resourceGroupName string, subscri
 	return &lb, nil
 }
 
-// GetLoadBalancerClientE creates a storage account client.
+// GetLoadBalancerClientE creates a load balancer client.
 func GetLoadBalancerClientE(subscriptionID string) (*network.LoadBalancersClient, error) {
 	loadBalancerClient := network.NewLoadBalancersClient(subscriptionID)
 	authorizer, err := NewAuthorizer()
@@ -45,7 +45,7 @@ func GetLoadBalancerClientE(subscriptionID string) (*network.LoadBalancersClient
 	return &loadBalancerClient, nil
 }
 
-// GetPublicIPAddressE will return ApplicationGateway object and an error object
+// GetPublicIPAddressE will return a Public IP Address object and an error object
 func GetPublicIPAddressE(resourceGroupName, publicIPAddressName, subscriptionID string) (*network.PublicIPAddress, error) {
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
 	client, err := GetPublicIPAddressClientE(subscriptionID)

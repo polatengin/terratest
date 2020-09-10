@@ -1,16 +1,22 @@
 # Terraform Azure Example
 
 This folder contains a simple Terraform module that deploys resources in [Azure](https://azure.microsoft.com/) to demonstrate
-how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys a [Virtual
-Machine](https://azure.microsoft.com/en-us/services/virtual-machines/) and gives that VM a `Name` tag with the value specified in the
-`vm_name` variable.
+how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys the following resources:
+- Resource Group
+- Public IP Resource
+- Virtual Network (vnet) with a Subnet
+- Load Balancer, associated with Public IP
+- Load Balancer with Private IP, associated with vnet
 
-Check out [test/terraform_azure_example_test.go](/test/terraform_azure_example_test.go) to see how you can write
+For more information on the above resources, you may visit the official Azure website for more information:
+- Resource Groups: https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group
+- Public IPs: https://docs.microsoft.com/en-us/azure/virtual-network/public-ip-addresses
+- Virtual Networks: https://docs.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview
+- Subnets: https://docs.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-subnet
+- Load Balancers: https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-overview
+
+Check out [/test/terraform_azure_loadbalancer_example_test.go](/test/terraform_azure_loadbalancer_example_test.go) to see how you can write
 automated tests for this module.
-
-Note that the Virtual Machine in this module doesn't actually do anything; it just runs a Vanilla Ubuntu 16.04 image for
-demonstration purposes. For slightly more complicated, real-world examples of Terraform modules, see
-[terraform-http-example](/examples/terraform-http-example) and [terraform-ssh-example](/examples/terraform-ssh-example).
 
 **WARNING**: This module and the automated tests for it deploy real resources into your Azure account which can cost you
 money. The resources are all part of the [Azure Free Account](https://azure.microsoft.com/en-us/free/), so if you haven't used that up,
@@ -35,9 +41,9 @@ it should be free, but you are completely responsible for all Azure charges.
 1. [Review environment variables](#review-environment-variables).
 1. Install [Golang](https://golang.org/) and make sure this code is checked out into your `GOPATH`.
 1. `cd test`
-1. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/terraform_azure_example_test.go](/test/terraform_azure_example_test.go).
-1. `go build terraform_azure_example_test.go`
-1. `go test -v -run TestTerraformAzureExample`
+1. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/terraform_azure_loadbalancer_example_test.go](/test/terraform_azure_loadbalancer_example_test.go).
+1. `go build terraform_azure_loadbalancer_example_test.go`
+1. `go test -v -run TestTerraformAzureLoadBalancerExample`
 
 ## Check Go Dependencies
 
@@ -91,3 +97,10 @@ Note, in a Windows environment, these should be set as **system environment vari
 [System.Environment]::SetEnvironmentVariable("ARM_SUBSCRIPTION_ID",$your_subscription_id,[System.EnvironmentVariableTarget]::Machine)
 [System.Environment]::SetEnvironmentVariable("ARM_TENANT_ID",$your_tenant_id,[System.EnvironmentVariableTarget]::Machine)
 ```
+
+## Load Balancer Module APIs
+* `LoadBalancerExistsE` checks if the given Load Balancer exists in the given subscription and returns true/false
+* `GetLoadBalancerE` checks if the given Load Balancer exists in the given subscription and returns a Load Balancer resource (or nil if not found)
+* `GetLoadBalancerClientE` checks if the given Load Balancer exists in the given subscription and returns a Load Balancer client object (or nil if not found)
+* `GetPublicIPAddressE` checks if the given Public IP Address resource exists in the given subscription and returns a Public IP Address object (or nil if not found)
+* `GetPublicIPAddressClientE` checks if the given Public IP Address resource exists in the given subscription and returns a Public IP Address client object (or nil if not found)
