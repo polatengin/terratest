@@ -37,11 +37,12 @@ it should be free, but you are completely responsible for all Azure charges.
 1. `cd test`
 1. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/terraform_azure_example_test.go](/test/terraform_azure_example_test.go).
 1. `go build terraform_azure_example_test.go`
-1. `go test -v -run TestTerraformAzureExample`
+1. `go test terraform_azure_example_test.go -v`
+   - `-v` enables verbose output (logs all tests).
 
 ## Check Go Dependencies
 
-Check that the `github.com/Azure/azure-sdk-for-go` version in your generated `go.mod` for this test matches the version in the terratest [go.mod](https://github.com/gruntwork-io/terratest/blob/master/go.mod) file.  
+Check that the `github.com/Azure/azure-sdk-for-go` version in your generated `go.mod` for this test matches the version in the terratest [go.mod](https://github.com/gruntwork-io/terratest/blob/master/go.mod) file.
 
 > This was tested with **go1.14.1**.
 
@@ -83,7 +84,7 @@ export ARM_SUBSCRIPTION_ID=your_subscription_id
 export ARM_TENANT_ID=your_tenant_id
 ```
 
-Note, in a Windows environment, these should be set as **system environment variables**.  We can use a PowerShell console with administrative rights to update these environment variables:
+Note, in a Windows environment, these should be set as **system environment variables**. We can use a PowerShell console with administrative rights to update these environment variables:
 
 ```powershell
 [System.Environment]::SetEnvironmentVariable("ARM_CLIENT_ID",$your_app_id,[System.EnvironmentVariableTarget]::Machine)
