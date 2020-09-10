@@ -229,11 +229,15 @@ workflows:
   build-and-test:
     jobs:
       - setup:
+          context:
+            - Gruntwork Admin
           filters:
             tags:
               only: /^v.*/
 
       - test:
+          context:
+            - Gruntwork Admin
           requires:
             - setup
           filters:
@@ -241,6 +245,8 @@ workflows:
               only: /^v.*/
 
       - kubernetes_test:
+          context:
+            - Gruntwork Admin
           requires:
             - setup
           filters:
@@ -248,6 +254,8 @@ workflows:
               only: /^v.*/
 
       - helm_test:
+          context:
+            - Gruntwork Admin
           requires:
             - setup
           filters:
@@ -255,6 +263,8 @@ workflows:
               only: /^v.*/
 
       - deploy:
+          context:
+            - Gruntwork Admin
           requires:
             - test
             - kubernetes_test
