@@ -20,21 +20,15 @@ variable "prefix" {
 }
 
 variable "location" {
-  description = "temp"
+  description = "The region"
   type        = string
   default     = "East US"
 }
 
-variable "username" {
-  description = "The username to be provisioned into your VM"
+variable "disk_type" {
+  description = "The managed disk type"
   type        = string
-  default     = "testadmin"
-}
-
-variable "password" {
-  description = "The password to configure for SSH access"
-  type        = string
-  default     = "HorriblePassword1234!"
+  default     = "Standard_LRS"
 }
 
 

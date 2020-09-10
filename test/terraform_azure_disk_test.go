@@ -8,6 +8,8 @@ package test
 import (
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
+
 	"github.com/gruntwork-io/terratest/modules/azure"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/stretchr/testify/assert"
@@ -45,5 +47,5 @@ func TestTerraformAzureVmExample(t *testing.T) {
 
 	// Check the Availability Set
 	actualDiskType := azure.GetTypeOfDisk(t, diskName, resourceGroupName, subID)
-	assert.Equal(t, diskType, actualDiskType)
+	assert.Equal(t, compute.DiskStorageAccountTypes(diskType), actualDiskType)
 }
