@@ -1,19 +1,19 @@
-# Terraform Azure Availability Set Example
+# Terraform Azure Network Example
 
 This folder contains a simple Terraform module that deploys resources in [Azure](https://azure.microsoft.com/) to demonstrate
-how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys an Availability Set with two attched Virtual Machines.
+how you can use Terratest to write automated tests for your Azure Terraform code. This module deploys to a Virtual Network two Network Interface Cards, one with an internal only IP and another with an internal and external Public IP.
 
-* A `Availability Set` that gives the module the following:
-    * `Availability Set Name` with the value specified in the `availability_set_name` variable.
-    * `Availability Set Fault Domain Count` tag with the value specified in the `availability_set_fdc` variable.
-* A [Virtual Machines](https://azure.microsoft.com/en-us/services/virtual-machines/) that gives the Availability Set the following:
-    * `Virtual Machine 01 Name` with the value specified in the `vm_name_01` variable.
-    * `Virtual Machine 02 Name` with the value specified in the `vm_name_02` variable.
+* A [Virtual Network](https://azure.microsoft.com/en-us/services/virtual-network/) that gives the VM the following:
+    * `Virtual Network Name` with the value specified in the `virtual_network_name` variable.
+    * `Subnet` with the value specified in the `subnet_name` variable.
+    * `Public Address` with the value specified in the `public_ip_name` variable.
+    * `Internal Network Interface` with the value specified in the `network_interface_internal` variable.
+    * `ExternalNetwork Interface` with the value specified in the `network_interface_external` variable.
 
-Check out [test/terraform_azure_availabilityset_test.go](/test/terraform_azure_availabilityset_test.go) to see how you can write
+Check out [test/terraform_azure_network_test.go](/test/terraform_azure_network_test.go) to see how you can write
 automated tests for this module.
 
-Note that the Availability Set and VMs in this module don't actually do anything; it just runs the resources for
+Note that the Network Interface in this module doesn't actually do anything; it just runs the resources for
 demonstration purposes.
 
 **WARNING**: This module and the automated tests for it deploy real resources into your Azure account which can cost you
@@ -39,9 +39,9 @@ it should be free, but you are completely responsible for all Azure charges.
 1. [Review environment variables](#review-environment-variables).
 1. Install [Golang](https://golang.org/) and make sure this code is checked out into your `GOPATH`.
 1. `cd test`
-1. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/terraform_azure_availabilityset_test.go](/test/terraform_azure_nic_test.go).
-1. `go build terraform_azure_availabilityset_test.go`
-1. `go test -v -run TestTerraformAzureAvailabilitySetExample`
+1. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/terraform_azure_nic_test.go](/test/terraform_azure_nic_test.go).
+1. `go build terraform_azure_network_test.go`
+1. `go test -v -run TestTerraformAwsNetworkExample`
 
 ## Check Go Dependencies
 
@@ -64,7 +64,7 @@ require (
 If we make changes to either the **go.mod** or the **go test file**, we should make sure that the go build command works still.
 
 ```powershell
-go build terraform_azure_availabilityset_test.go
+go build terraform_azure_nic_test.go
 ```
 
 ## Review Environment Variables

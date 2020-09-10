@@ -77,7 +77,7 @@ resource "azurerm_network_interface" "main02" {
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# DEPLOY A VIRTUAL MACHINES RUNNING LINUX
+# DEPLOY 2 VIRTUAL MACHINES TO THE AVAILABILITY SET
 # ---------------------------------------------------------------------------------------------------------------------
 
 resource "azurerm_virtual_machine" "main01" {

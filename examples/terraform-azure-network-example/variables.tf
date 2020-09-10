@@ -16,7 +16,7 @@
 variable "prefix" {
   description = "temp"
   type        = string
-  default     = "terratest-vm"
+  default     = "terratest-net"
 }
 
 variable "location" {
@@ -28,55 +28,23 @@ variable "location" {
 variable "subnet_prefix" {
   description = "temp"
   type        = string
-  default     = "10.0.17.0/24"
+  default     = "10.0.20.0/24"
 }
 
 variable "private_ip" {
   description = "temp"
   type        = string
-  default     = "10.0.17.4"
+  default     = "10.0.20.5"
 }
 
-variable "vm_size" {
+variable "dns_ip_01" {
   description = "temp"
   type        = string
-  default     = "Standard_DS1_v2"
+  default     = "10.0.0.5"
 }
 
-variable "vm_image_sku" {
+variable "dns_ip_02" {
   description = "temp"
   type        = string
-  default     = "2016-Datacenter"
+  default     = "10.0.0.6"
 }
-
-variable "vm_image_version" {
-  description = "temp"
-  type        = string
-  default     = "latest"
-}
-
-variable "disk_type" {
-  description = "temp"
-  type        = string
-  default     = "Standard_LRS"
-}
-
-
-variable "user_name" {
-  description = "the username to be provisioned into your vm"
-  type        = string
-  default     = "testadmin"
-}
-
-variable "password" {
-  description = "the password to configure for ssh access"
-  type        = string
-  default     = "horriblepassword1234!"
-}
-
-# ---------------------------------------------------------------------------------------------------------------------
-# OPTIONAL PARAMETERS
-# These parameters have reasonable defaults.
-# ---------------------------------------------------------------------------------------------------------------------
-
-

@@ -2,48 +2,62 @@ package azure
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	"github.com/stretchr/testify/require"
 )
 
-// GetVMNetworkInterfacesList gets a list of Network Interfaces for a given Azure Virtual Machine
-func GetVMNetworkInterfacesList(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) []string {
-	nicList, err := GetVMNetworkInterfacesListE(t, vmName, resGroupName, subscriptionID)
+// AssertVirtualMachineExists checks if the given VM exists in the given subscription
+func AssertVirtualMachineExists(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) {
+	err := AssertVirtualMachineExistsE(t, vmName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+}
+
+// AssertVirtualMachineExistsE checks if the given VM exists in the given subscription and returns an error if not found
+func AssertVirtualMachineExistsE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) error {
+	// Get VM Object
+	_, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetNicNamesForVirtualMachine gets a list of Network Interfaces for a given Azure Virtual Machine
+func GetNicNamesForVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) []string {
+	nicList, err := GetNicNamesForVirtualMachineE(t, vmName, resGroupName, subscriptionID)
 	require.NoError(t, err)
 
 	return nicList
 }
 
-// GetVMNetworkInterfacesListE gets a list of Network Interfaces for a given Azure Virtual Machine
-func GetVMNetworkInterfacesListE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) ([]string, error) {
+// GetNicNamesForVirtualMachineE gets a list of Network Interfaces for a given Azure Virtual Machine with error
+func GetNicNamesForVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) ([]string, error) {
 	nics := []string{}
 
-	theVM, err := GetVirtualMachineE(vmName, resGroupName, "")
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
-		return nil, err
+		return nics, err
 	}
 
-	theNICs := *theVM.NetworkProfile.NetworkInterfaces
-	if len(theNICs) == 0 {
-		return nil, errors.New("No network interface attached to this Virtual Machine")
+	vmNICs := *vm.NetworkProfile.NetworkInterfaces
+	if len(vmNICs) == 0 {
+		// No VM NICs attached is still valid but returning a meaningful error
+		return nics, errors.New("No network interface attached to this Virtual Machine")
 	}
 
-	for _, nic := range theNICs {
-		tmp := strings.Split(*nic.ID, "/")
-		if len(tmp) > 0 {
-			nics = append(nics, tmp[len(tmp)-1])
-		}
+	// Get the attached NIC names
+	for _, nic := range vmNICs {
+		nics = append(nics, GetNameFromResourceID(*nic.ID))
 	}
 	return nics, nil
 }
 
-// GetNicCountOfVirtualMachine gets the Managed Disk count of the given Azure Virtual Machine
+// GetNicCountOfVirtualMachine gets the Network Interface count of the given Azure Virtual Machine
 func GetNicCountOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) int {
 	nicCount, err := GetNicCountOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
 	require.NoError(t, err)
@@ -51,24 +65,12 @@ func GetNicCountOfVirtualMachine(t testing.TestingT, vmName string, resGroupName
 	return nicCount
 }
 
-// GetNicCountOfVirtualMachineE gets the Managed Disk count of the given Azure Virtual Machine
+// GetNicCountOfVirtualMachineE gets the Network Interface count of the given Azure Virtual Machine with error
 func GetNicCountOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (int, error) {
 	nicCount := 0
 
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return nicCount, err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return nicCount, err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return nicCount, err
 	}
@@ -76,37 +78,26 @@ func GetNicCountOfVirtualMachineE(t testing.TestingT, vmName string, resGroupNam
 	return len(*vm.NetworkProfile.NetworkInterfaces), nil
 }
 
-// GetManagedDiskNamesOfVirtualMachine gets the list of Managed Disk name of the given Azure Virtual Machine
+// GetManagedDiskNamesOfVirtualMachine gets the list of Managed Disk names of the given Azure Virtual Machine
 func GetManagedDiskNamesOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) []string {
-	mngDiskNames, err := GetManagedDiskNamesOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
+	diskNames, err := GetManagedDiskNamesOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
 	require.NoError(t, err)
 
-	return mngDiskNames
+	return diskNames
 }
 
-// GetManagedDiskNamesOfVirtualMachineE gets the Managed Disk count of the given Azure Virtual Machine
+// GetManagedDiskNamesOfVirtualMachineE gets the list of Managed Disk names of the given Azure Virtual Machine with error
 func GetManagedDiskNamesOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) ([]string, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
-	if err != nil {
-		return nil, err
-	}
-
-	vmDisks := *vm.StorageProfile.DataDisks
 	diskNames := []string{}
 
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
+	if err != nil {
+		return diskNames, err
+	}
+
+	// Get VM Attached Disks
+	vmDisks := *vm.StorageProfile.DataDisks
 	for _, v := range vmDisks {
 		diskNames = append(diskNames, *v.Name)
 	}
@@ -122,24 +113,12 @@ func GetManagedDiskCountOfVirtualMachine(t testing.TestingT, vmName string, resG
 	return mngDiskCount
 }
 
-// GetManagedDiskCountOfVirtualMachineE gets the Managed Disk count of the given Azure Virtual Machine
+// GetManagedDiskCountOfVirtualMachineE gets the Managed Disk count of the given Azure Virtual Machine with error
 func GetManagedDiskCountOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (int, error) {
-	mngDiskCount := 0
+	mngDiskCount := -1
 
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return mngDiskCount, err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return mngDiskCount, err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return mngDiskCount, err
 	}
@@ -147,7 +126,7 @@ func GetManagedDiskCountOfVirtualMachineE(t testing.TestingT, vmName string, res
 	return len(*vm.StorageProfile.DataDisks), nil
 }
 
-// GetOsDiskNameOfVirtualMachine gets the Availability Set ID of the given Azure Virtual Machine
+// GetOsDiskNameOfVirtualMachine gets the OS Disk Name of the given Azure Virtual Machine
 func GetOsDiskNameOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) string {
 	osDiskName, err := GetOsDiskNameOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
 	require.NoError(t, err)
@@ -155,27 +134,34 @@ func GetOsDiskNameOfVirtualMachine(t testing.TestingT, vmName string, resGroupNa
 	return osDiskName
 }
 
-// GetOsDiskNameOfVirtualMachineE gets the Availability Set ID of the given Azure Virtual Machine
+// GetOsDiskNameOfVirtualMachineE gets the OS Disk Name of the given Azure Virtual Machine with error
 func GetOsDiskNameOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (string, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return "", err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return "", err
 	}
 
 	return *vm.StorageProfile.OsDisk.Name, nil
+}
+
+// GetAvailabilitySetIDOfVirtualMachine gets the Availability Set ID of the given Azure Virtual Machine
+func GetAvailabilitySetIDOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) string {
+	adminUser, err := GetAvailabilitySetIDOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+
+	return adminUser
+}
+
+// GetAvailabilitySetIDOfVirtualMachineE gets the Availability Set ID of the given Azure Virtual Machine with error
+func GetAvailabilitySetIDOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (string, error) {
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
+	if err != nil {
+		return "", err
+	}
+
+	return GetNameFromResourceID(*vm.AvailabilitySet.ID), nil
 }
 
 // VMImage represents the storage image for the given Azure Virtual Machine
@@ -186,7 +172,7 @@ type VMImage struct {
 	Version   string
 }
 
-// GetImageOfVirtualMachine gets the Availability Set ID of the given Azure Virtual Machine
+// GetImageOfVirtualMachine gets the VM Image of the given Azure Virtual Machine
 func GetImageOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) VMImage {
 	adminUser, err := GetImageOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
 	require.NoError(t, err)
@@ -194,24 +180,12 @@ func GetImageOfVirtualMachine(t testing.TestingT, vmName string, resGroupName st
 	return adminUser
 }
 
-// GetImageOfVirtualMachineE gets the Availability Set ID of the given Azure Virtual Machine
+// GetImageOfVirtualMachineE gets the VM Image  of the given Azure Virtual Machine with error
 func GetImageOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (VMImage, error) {
 	vmImage := VMImage{}
 
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return vmImage, err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return vmImage, err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return vmImage, err
 	}
@@ -224,43 +198,6 @@ func GetImageOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName s
 	return vmImage, nil
 }
 
-// GetAvailabilitySetIDOfVirtualMachine gets the Availability Set ID of the given Azure Virtual Machine
-func GetAvailabilitySetIDOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) string {
-	adminUser, err := GetAvailabilitySetIDOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
-	require.NoError(t, err)
-
-	return adminUser
-}
-
-// GetAvailabilitySetIDOfVirtualMachineE gets the Availability Set ID of the given Azure Virtual Machine
-func GetAvailabilitySetIDOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (string, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return "", err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
-	if err != nil {
-		return "", err
-	}
-
-	avsID := string(*vm.AvailabilitySet.ID)
-	tmp := strings.Split(avsID, "/")
-	if !(len(tmp) > 0) {
-		return "", errors.New("Availability set ID not found")
-	}
-
-	return tmp[len(tmp)-1], nil
-}
-
 // GetAdminUserOfVirtualMachine gets the admin username of the given Azure Virtual Machine
 func GetAdminUserOfVirtualMachine(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) string {
 	adminUser, err := GetAdminUserOfVirtualMachineE(t, vmName, resGroupName, subscriptionID)
@@ -269,22 +206,10 @@ func GetAdminUserOfVirtualMachine(t testing.TestingT, vmName string, resGroupNam
 	return adminUser
 }
 
-// GetAdminUserOfVirtualMachineE gets the admin username of the given Azure Virtual Machine
+// GetAdminUserOfVirtualMachineE gets the admin username of the given Azure Virtual Machine with error
 func GetAdminUserOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (string, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return "", err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return "", err
 	}
@@ -300,22 +225,10 @@ func GetSizeOfVirtualMachine(t testing.TestingT, vmName string, resGroupName str
 	return size
 }
 
-// GetSizeOfVirtualMachineE gets the size type of the given Azure Virtual Machine
+// GetSizeOfVirtualMachineE gets the size type of the given Azure Virtual Machine with error
 func GetSizeOfVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (compute.VirtualMachineSizeTypes, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return "", err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return "", err
 	}
@@ -331,27 +244,15 @@ func GetTagsForVirtualMachine(t testing.TestingT, vmName string, resGroupName st
 	return tags
 }
 
-// GetTagsForVirtualMachineE gets the tags of the given Virtual Machine as a map
+// GetTagsForVirtualMachineE gets the tags of the given Virtual Machine as a map with error
 func GetTagsForVirtualMachineE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) (map[string]string, error) {
 	// Setup a blank map to populate and return
 	tags := make(map[string]string)
 
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
-		return tags, err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return tags, err
-	}
-
-	// Get the details of the target virtual machine
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
-	if err != nil {
-		return tags, err
+		return nil, err
 	}
 
 	// Range through existing tags and populate above map accordingly
@@ -362,6 +263,10 @@ func GetTagsForVirtualMachineE(t testing.TestingT, vmName string, resGroupName s
 	return tags, nil
 }
 
+// ***************************************************** //
+// Get multiple Virtual Machines from a Resource Group
+// ***************************************************** //
+
 // GetVirtualMachinesList gets a list of all virtual machines in the specified resource group
 func GetVirtualMachinesList(t testing.TestingT, resGroupName string, subscriptionID string) []string {
 	vms, err := GetVirtualMachinesListE(resGroupName, subscriptionID)
@@ -369,11 +274,11 @@ func GetVirtualMachinesList(t testing.TestingT, resGroupName string, subscriptio
 	return vms
 }
 
-// GetVirtualMachinesListE gets all virtual machines in the specified resource group
+// GetVirtualMachinesListE gets a list of all virtual machines in the specified resource group with error
 func GetVirtualMachinesListE(resourceGroupName string, subscriptionID string) ([]string, error) {
 	vmDetails := []string{}
 
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
+	vmClient, err := GetVirtualMachineClientE(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -389,16 +294,16 @@ func GetVirtualMachinesListE(resourceGroupName string, subscriptionID string) ([
 	return vmDetails, nil
 }
 
-// GetVirtualMachines gets all virtual machines in the specified resource group
+// GetVirtualMachines gets all virtual machine objects in the specified resource group
 func GetVirtualMachines(t testing.TestingT, resGroupName string, subscriptionID string) *map[string]compute.VirtualMachineProperties {
 	vms, err := GetVirtualMachinesE(resGroupName, subscriptionID)
 	require.NoError(t, err)
 	return vms
 }
 
-// GetVirtualMachinesE gets all virtual machines in the specified resource group
+// GetVirtualMachinesE gets all virtual machine objects in the specified resource group with error
 func GetVirtualMachinesE(resourceGroupName string, subscriptionID string) (*map[string]compute.VirtualMachineProperties, error) {
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
+	vmClient, err := GetVirtualMachineClientE(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +323,7 @@ func GetVirtualMachinesE(resourceGroupName string, subscriptionID string) (*map[
 }
 
 // ***************************************************** //
-// Option to retrieve the VM Instance and related getter //
+// Get VM Instance and sample property getter
 // ***************************************************** //
 
 // Instance of the VM
@@ -433,26 +338,15 @@ func GetVirtualMachineInstance(t testing.TestingT, vmName string, resGroupName s
 	return vm
 }
 
-// GetVirtualMachineInstanceE gets a local virtual machine instance in the specified resource group
+// GetVirtualMachineInstanceE gets a local virtual machine instance in the specified resource group with error
 func GetVirtualMachineInstanceE(vmName string, resGroupName string, subscriptionID string) (*Instance, error) {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
+	// Get VM Object
+	vm, err := GetVirtualMachineE(vmName, resGroupName, subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return nil, err
-	}
-
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Instance{&vm}, nil
+	return &Instance{vm}, nil
 }
 
 // GetVirtualMachineSize gets vm size
@@ -461,7 +355,7 @@ func (vm *Instance) GetVirtualMachineSize() compute.VirtualMachineSizeTypes {
 }
 
 // ******************************** //
-// Option to retrieve the VM Object //
+// Get the base VM Object
 // ******************************** //
 
 // GetVirtualMachine gets a virtual machine in the specified resource group
@@ -471,7 +365,7 @@ func GetVirtualMachine(t testing.TestingT, vmName string, resGroupName string, s
 	return vm
 }
 
-// GetVirtualMachineE gets a virtual machine in the specified resource group
+// GetVirtualMachineE gets a Virtual Machine in the specified Azure Resource Group
 func GetVirtualMachineE(vmName string, resGroupName string, subscriptionID string) (*compute.VirtualMachine, error) {
 	// Validate resource group name and subscription ID
 	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
@@ -479,13 +373,13 @@ func GetVirtualMachineE(vmName string, resGroupName string, subscriptionID strin
 		return nil, err
 	}
 
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
+	// Get the client refrence
+	client, err := GetVirtualMachineClientE(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	vm, err := vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
+	vm, err := client.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
 	if err != nil {
 		return nil, err
 	}
@@ -493,68 +387,23 @@ func GetVirtualMachineE(vmName string, resGroupName string, subscriptionID strin
 	return &vm, nil
 }
 
-// AssertVirtualMachineExists checks if the given VM exists in the given subscription and fail the test if it does not
-func AssertVirtualMachineExists(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) {
-	err := AssertVirtualMachineExistsE(t, vmName, resGroupName, subscriptionID)
-	require.NoError(t, err)
-}
-
-// AssertVirtualMachineExistsE checks if the given VM exists in the given subscription and fail the test if it does not
-func AssertVirtualMachineExistsE(t testing.TestingT, vmName string, resGroupName string, subscriptionID string) error {
-	// Validate resource group name and subscription ID
-	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
-	if err != nil {
-		return err
-	}
-
-	// Create a VM client
-	vmClient, err := GetVirtualMachineClient(subscriptionID)
-	if err != nil {
-		return err
-	}
-
-	_, err = vmClient.Get(context.Background(), resGroupName, vmName, compute.InstanceView)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetVirtualMachineClient is a helper function that will setup an Azure Virtual Machine client on your behalf
-func GetVirtualMachineClient(subscriptionID string) (*compute.VirtualMachinesClient, error) {
+// GetVirtualMachineClientE creates a Azure Virtual Machine client in the specified Azure Subscription
+func GetVirtualMachineClientE(subscriptionID string) (*compute.VirtualMachinesClient, error) {
 	// Validate Azure subscription ID
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a VM client
-	vmClient := compute.NewVirtualMachinesClient(subscriptionID)
+	// Get the VM client
+	client := compute.NewVirtualMachinesClient(subscriptionID)
 
 	// Create an authorizer
 	authorizer, err := NewAuthorizer()
 	if err != nil {
 		return nil, err
 	}
+	client.Authorizer = *authorizer
 
-	// Attach authorizer to the client
-	vmClient.Authorizer = *authorizer
-
-	return &vmClient, nil
-}
-
-// ********************************** //
-// VM attached resources and clients  //
-// ********************************** //
-
-// PrettyPrint will print the contents of the obj
-func PrettyPrint(data interface{}) string {
-	var p []byte
-	//    var err := error
-	p, err := json.MarshalIndent(data, "", "\t")
-	if err != nil {
-		return fmt.Sprintln(err)
-	}
-	return fmt.Sprintf("%s \n", p)
+	return &client, nil
 }

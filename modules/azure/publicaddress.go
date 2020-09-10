@@ -8,7 +8,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// GetPublicAddressIP gets the private IPs of a Network INterface
+// AssertPublicAddressExists checks for an Azure Public Address
+func AssertPublicAddressExists(t testing.TestingT, publicAddressName string, resGroupName string, subscriptionID string) {
+	err := AssertPublicAddressExistsE(publicAddressName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+}
+
+// AssertPublicAddressExistsE checks for an Azure Public Address with error
+func AssertPublicAddressExistsE(publicAddressName string, resGroupName string, subscriptionID string) error {
+	// Get the Public Address
+	_, err := GetPublicIPAddressE(publicAddressName, resGroupName, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetPublicAddressIP gets the IP of a Public IP Address
 func GetPublicAddressIP(t testing.TestingT, publicAddressName string, resGroupName string, subscriptionID string) string {
 	IP, err := GetPublicAddressIPE(t, publicAddressName, resGroupName, subscriptionID)
 	require.NoError(t, err)
@@ -16,7 +33,7 @@ func GetPublicAddressIP(t testing.TestingT, publicAddressName string, resGroupNa
 	return IP
 }
 
-// GetPublicAddressIPE gets the provate IPs of a Network INterface
+// GetPublicAddressIPE gets the IP of a Public IP Address with error
 func GetPublicAddressIPE(t testing.TestingT, publicAddressName string, resGroupName string, subscriptionID string) (string, error) {
 	// Validate Azure subscription ID
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
@@ -33,21 +50,29 @@ func GetPublicAddressIPE(t testing.TestingT, publicAddressName string, resGroupN
 	return *pip.IPAddress, nil
 }
 
-// GetPublicIPAddressE gets a PublicIPAddressesd
+// GetPublicIPAddressE gets a Public IP Addresses in the specified Azure Resource Group
 func GetPublicIPAddressE(publicIPAddressName string, resGroupName string, subscriptionID string) (*network.PublicIPAddress, error) {
+	// Validate resource group name and subscription ID
+	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the client refrence
 	client, err := GetPublicIPAddressClientE(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	publicIPAddress, err := client.Get(context.Background(), resGroupName, publicIPAddressName, "")
+	// Get the Public IP Address
+	pip, err := client.Get(context.Background(), resGroupName, publicIPAddressName, "")
 	if err != nil {
 		return nil, err
 	}
-	return &publicIPAddress, nil
+	return &pip, nil
 }
 
-// GetPublicIPAddressClientE creates a PublicIPAddresses client
+// GetPublicIPAddressClientE creates a Public IP Addresses client in the specified Azure Subscription
 func GetPublicIPAddressClientE(subscriptionID string) (*network.PublicIPAddressesClient, error) {
 	// Validate Azure subscription ID
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
@@ -55,12 +80,15 @@ func GetPublicIPAddressClientE(subscriptionID string) (*network.PublicIPAddresse
 		return nil, err
 	}
 
-	publicIPClient := network.NewPublicIPAddressesClient(subscriptionID)
+	// Get the Public IP Address client
+	client := network.NewPublicIPAddressesClient(subscriptionID)
+
+	// Create an authorizer
 	authorizer, err := NewAuthorizer()
 	if err != nil {
 		return nil, err
 	}
+	client.Authorizer = *authorizer
 
-	publicIPClient.Authorizer = *authorizer
-	return &publicIPClient, nil
+	return &client, nil
 }

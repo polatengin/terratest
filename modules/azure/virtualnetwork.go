@@ -10,16 +10,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CheckIPInSubnet gets the subnet and checks if the IP is in its range
-func CheckIPInSubnet(t testing.TestingT, resGroupName string, vnetName string, subnetName string, IP string, subscriptionID string) bool {
-	inRange, err := CheckIPInSubnetE(t, resGroupName, vnetName, subnetName, IP, subscriptionID)
+// AssertSubnetExists checks for a Subnet
+func AssertSubnetExists(t testing.TestingT, subnetName string, vnetName string, resGroupName string, subscriptionID string) {
+	err := AssertSubnetExistsE(t, subnetName, vnetName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+}
+
+// AssertSubnetExistsE checks for a Virtual Network with Error
+func AssertSubnetExistsE(t testing.TestingT, subnetName string, vnetName string, resGroupName string, subscriptionID string) error {
+	// Get the Network Interface client
+	_, err := GetSubnetE(t, subnetName, vnetName, resGroupName, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AssertVirtualNetworkExists checks for an Azure Virtual Network
+func AssertVirtualNetworkExists(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) {
+	err := AssertVirtualNetworkExistsE(t, vnetName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+}
+
+// AssertVirtualNetworkExistsE checks for an Azure Virtual Network with Error
+func AssertVirtualNetworkExistsE(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) error {
+	// Get the Network Interface
+	_, err := GetVirtualNetworkE(t, vnetName, resGroupName, subscriptionID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckPrivateIPInSubnet gets the subnet and checks if the IP is in its range
+func CheckPrivateIPInSubnet(t testing.TestingT, resGroupName string, vnetName string, subnetName string, IP string, subscriptionID string) bool {
+	inRange, err := CheckPrivateIPInSubnetE(t, resGroupName, vnetName, subnetName, IP, subscriptionID)
 	require.NoError(t, err)
 
 	return inRange
 }
 
-// CheckIPInSubnetE gets the subnet and checks if the IP is in its range
-func CheckIPInSubnetE(t testing.TestingT, resGroupName string, vnetName string, subnetName string, IP string, subscriptionID string) (bool, error) {
+// CheckPrivateIPInSubnetE gets the subnet and checks if the IP is in its range
+func CheckPrivateIPInSubnetE(t testing.TestingT, resGroupName string, vnetName string, subnetName string, IP string, subscriptionID string) (bool, error) {
 	envSubnetRange, err := GetSubnetIPRangeE(vnetName, subnetName, resGroupName, subscriptionID)
 	if err != nil {
 		return false, err
@@ -67,6 +101,33 @@ func GetSubnetIPRangeE(vnetName string, subnetName string, resGroupName string, 
 	return envSubnets[subnetName], nil
 }
 
+// GetVNetSubnetList gets a list of all virtual network subnets
+func GetVNetSubnetList(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) []string {
+	subnets, err := GetVNetSubnetListsE(vnetName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+
+	return subnets
+}
+
+// GetVNetSubnetListsE gets a list of all virtual network subnets with Error
+func GetVNetSubnetListsE(vnetName string, resGroupName string, subscriptionID string) ([]string, error) {
+	client, err := GetSubnetClientE(subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	subnets, err := client.List(context.Background(), resGroupName, vnetName)
+	if err != nil {
+		return nil, err
+	}
+
+	subnetList := []string{}
+	for _, v := range subnets.Values() {
+		subnetList = append(subnetList, *v.Name)
+	}
+	return subnetList, nil
+}
+
 // GetVNetSubnets gets all virtual network subclients name, and address prefix
 func GetVNetSubnets(t testing.TestingT, resGroupName string, vnetName string, subscriptionID string) map[string]string {
 	subnets, err := GetVNetSubnetsE(resGroupName, vnetName, subscriptionID)
@@ -97,7 +158,68 @@ func GetVNetSubnetsE(resGroupName string, vnetName string, subscriptionID string
 	return subNetDetails, nil
 }
 
-// GetSubnetClientE creates a virtual network subnet client
+// GetVNetDNSServerIPList gets a list of all Virtual Network DNS server IPs
+func GetVNetDNSServerIPList(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) []string {
+	vnetDNSIPs, err := GetVNetDNSServerIPListE(t, vnetName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+
+	return vnetDNSIPs
+}
+
+// GetVNetDNSServerIPListE gets a list of all Virtual Network DNS server IPs with Error
+func GetVNetDNSServerIPListE(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) ([]string, error) {
+	// Get Virtual Network
+	vnet, err := GetVirtualNetworkE(t, vnetName, resGroupName, subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	return *vnet.DhcpOptions.DNSServers, nil
+}
+
+// GetSubnetRange gets the Subnet IPv4 Range
+func GetSubnetRange(t testing.TestingT, subnetName string, vnetName string, resGroupName string, subscriptionID string) string {
+	vnetDNSIPs, err := GetSubnetRangeE(t, subnetName, vnetName, resGroupName, subscriptionID)
+	require.NoError(t, err)
+
+	return vnetDNSIPs
+}
+
+// GetSubnetRangeE gets the Subnet IPv4 Range with Error
+func GetSubnetRangeE(t testing.TestingT, subnetName string, vnetName string, resGroupName string, subscriptionID string) (string, error) {
+	// Get Subnet
+	subnet, err := GetSubnetE(t, subnetName, vnetName, resGroupName, subscriptionID)
+	if err != nil {
+		return "", err
+	}
+
+	return *subnet.AddressPrefix, nil
+}
+
+// GetSubnetE gets a subnet
+func GetSubnetE(t testing.TestingT, subnetName string, vnetName string, resGroupName string, subscriptionID string) (*network.Subnet, error) {
+	// Validate Azure Resource Group
+	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the client refrence
+	client, err := GetSubnetClientE(subscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the Subnet
+	subnet, err := client.Get(context.Background(), resGroupName, vnetName, subnetName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return &subnet, nil
+}
+
+// GetSubnetClientE creates a subnet client
 func GetSubnetClientE(subscriptionID string) (*network.SubnetsClient, error) {
 	// Validate Azure subscription ID
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
@@ -105,34 +227,42 @@ func GetSubnetClientE(subscriptionID string) (*network.SubnetsClient, error) {
 		return nil, err
 	}
 
-	subNetClient := network.NewSubnetsClient(subscriptionID)
+	// Get the Subnet client
+	client := network.NewSubnetsClient(subscriptionID)
 
 	// Create an authorizer
 	authorizer, err := NewAuthorizer()
 	if err != nil {
 		return nil, err
 	}
+	client.Authorizer = *authorizer
 
-	subNetClient.Authorizer = *authorizer
-	return &subNetClient, nil
+	return &client, nil
 }
 
-// GetVirtualNetworkE gets virtual network object
+// GetVirtualNetworkE gets Virtual Network in the specified Azure Resource Group
 func GetVirtualNetworkE(t testing.TestingT, vnetName string, resGroupName string, subscriptionID string) (*network.VirtualNetwork, error) {
+	// Validate Azure Resource Group
+	resGroupName, err := getTargetAzureResourceGroupName(resGroupName)
+	if err != nil {
+		return nil, err
+	}
 
+	// Get the client refrence
 	client, err := GetVirtualNetworksClientE(subscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	virtualNetwork, err := client.Get(context.Background(), resGroupName, vnetName, "")
+	// Get the Virtual Network
+	vnet, err := client.Get(context.Background(), resGroupName, vnetName, "")
 	if err != nil {
 		return nil, err
 	}
-	return &virtualNetwork, nil
+	return &vnet, nil
 }
 
-// GetVirtualNetworksClientE creates a virtual network client
+// GetVirtualNetworksClientE creates a virtual network client in the specified Azure Subscription
 func GetVirtualNetworksClientE(subscriptionID string) (*network.VirtualNetworksClient, error) {
 	// Validate Azure subscription ID
 	subscriptionID, err := getTargetAzureSubscription(subscriptionID)
@@ -140,14 +270,15 @@ func GetVirtualNetworksClientE(subscriptionID string) (*network.VirtualNetworksC
 		return nil, err
 	}
 
-	vnClient := network.NewVirtualNetworksClient(subscriptionID)
+	// Get the Virtual Network client
+	client := network.NewVirtualNetworksClient(subscriptionID)
 
 	// Create an authorizer
 	authorizer, err := NewAuthorizer()
 	if err != nil {
 		return nil, err
 	}
+	client.Authorizer = *authorizer
 
-	vnClient.Authorizer = *authorizer
-	return &vnClient, nil
+	return &client, nil
 }

@@ -6,7 +6,6 @@
 package test
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
@@ -15,37 +14,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTerraformAzureVmExample(t *testing.T) {
+func TestTerraformAzureAvailabilitySetExample(t *testing.T) {
 	t.Parallel()
 
 	// Subscription ID, leave blank if available as an Environment Var
 	subID := ""
 	prefix := "terratest-avs"
-	var availabilitySetFDC int32
 
 	// Configure Terraform setting up a path to Terraform code.
 	terraformOptions := &terraform.Options{
-		// The path to where our Terraform code is located
+		// Relative path to the Terraform dir
 		TerraformDir: "../examples/terraform-azure-availabilityset-example",
 
 		// Variables to pass to our Terraform code using -var options
-		// "username" and "password" should not be passed from here in a production scenario.
 		Vars: map[string]interface{}{
 			"prefix": prefix,
-		}, /* A */
+		},
 	}
 
 	// At the end of the test, run `terraform destroy` to clean up any resources that were created
-	defer terraform.Destroy(t, terraformOptions)
+	// defer terraform.Destroy(t, terraformOptions)
 
 	// Run `terraform init` and `terraform apply`. Fail the test if there are any errors.
-	terraform.InitAndApply(t, terraformOptions)
+	// terraform.InitAndApply(t, terraformOptions)
 
 	// Run `terraform output` to get the values of output variables
 	resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
 	availabilitySetName := terraform.Output(t, terraformOptions, "availability_set_name")
-	fdc, _ := strconv.ParseInt(terraform.Output(t, terraformOptions, "availability_set_fdc"), 10, 32)
-	availabilitySetFDC = int32(fdc)
+	availabilitySetFDC := terraform.Output(t, terraformOptions, "availability_set_fdc")
 	vmName01 := terraform.Output(t, terraformOptions, "vm_name_01")
 	vmName02 := terraform.Output(t, terraformOptions, "vm_name_02")
 
@@ -57,8 +53,9 @@ func TestTerraformAzureVmExample(t *testing.T) {
 	actualAvsFaultDomainCount := azure.GetFaultDomainCountOfAvailabilitySet(t, availabilitySetName, resourceGroupName, subID)
 	assert.Equal(t, availabilitySetFDC, actualAvsFaultDomainCount)
 
+	// Check VMs exist in the Availability Set
 	actualVMsInAvs := azure.GetVMsOfAvailabilitySet(t, availabilitySetName, resourceGroupName, subID)
-	assert.Contains(t, actualVMsInAvs, strings.ToUpper(vmName01))
-	assert.Contains(t, actualVMsInAvs, strings.ToUpper(vmName02))
+	assert.Contains(t, actualVMsInAvs, strings.ToLower(vmName01))
+	assert.Contains(t, actualVMsInAvs, strings.ToLower(vmName02))
 
 }
