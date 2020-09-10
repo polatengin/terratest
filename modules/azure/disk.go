@@ -10,10 +10,10 @@ import (
 
 // GetTypeOfDisk gets the Type of the given Azure Disk
 func GetTypeOfDisk(t testing.TestingT, diskName string, resGroupName string, subscriptionID string) compute.DiskStorageAccountTypes {
-	avsFaultDomainCount, err := GetTypeOfDiskE(diskName, resGroupName, subscriptionID)
+	diskType, err := GetTypeOfDiskE(diskName, resGroupName, subscriptionID)
 	require.NoError(t, err)
 
-	return avsFaultDomainCount
+	return diskType
 }
 
 // GetTypeOfDiskE gets the Type of the given Azure Disk
