@@ -8,16 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// GetTypeOfDisk gets the Type of the given Azure Disk
-func GetTypeOfDisk(t testing.TestingT, diskName string, resGroupName string, subscriptionID string) compute.DiskStorageAccountTypes {
-	diskType, err := GetTypeOfDiskE(diskName, resGroupName, subscriptionID)
+// GetDiskType gets the Type of the given Azure Disk
+func GetDiskType(t testing.TestingT, diskName string, resGroupName string, subscriptionID string) compute.DiskStorageAccountTypes {
+	diskType, err := GetDiskTypeE(diskName, resGroupName, subscriptionID)
 	require.NoError(t, err)
 
 	return diskType
 }
 
-// GetTypeOfDiskE gets the Type of the given Azure Disk
-func GetTypeOfDiskE(diskName string, resGroupName string, subscriptionID string) (compute.DiskStorageAccountTypes, error) {
+// GetDiskTypeE gets the Type of the given Azure Disk
+func GetDiskTypeE(diskName string, resGroupName string, subscriptionID string) (compute.DiskStorageAccountTypes, error) {
 	client, err := GetDiskClientE(subscriptionID)
 	if err != nil {
 		return "", err
