@@ -36,8 +36,8 @@ it should be free, but you are completely responsible for all Azure charges.
 5. Install [Golang](https://golang.org/) and make sure this code is checked out into your `GOPATH`.
 6. `cd test`
 7. Make sure [the azure-sdk-for-go versions match](#check-go-dependencies) in [/test/go.mod](/test/go.mod) and in [test/azure/terraform_azure_disk_test.go](/test/azure/terraform_azure_disk_test.go).
-8. `go build terraform_azure_@module@_test.go`
-9. `go test -v -run TestTerraformAzure@Module@Example`
+8. `go build azure/terraform_azure_disk_test.go`
+9. `go test -v -run TestTerraformAzureDiskExample`
 
 ## Module test APIs
 

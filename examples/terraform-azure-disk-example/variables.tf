@@ -9,8 +9,8 @@
 # ARM_TENANT_ID
 
 # ---------------------------------------------------------------------------------------------------------------------
-# REQUIRED PARAMETERS
-# You must provide a value for each of these parameters.
+# OPTIONAL PARAMETERS
+# These parameters have reasonable defaults.
 # ---------------------------------------------------------------------------------------------------------------------
 
 variable "prefix" {
